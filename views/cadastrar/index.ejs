@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title><%= title %></title>
+</head>
+<body>
+  <h1><%= title %></h1>
+  <%- include('../partials/header', { title: 'Página Inicial' }) %>
+  <hr>
+  <a href="/users/new">[ Criar Novo Usuário ]</a>
+
+  <table border="1" style="margin-top: 1em;">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Nome</th>
+        <th>Idade</th>
+        <th>Email</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (usuarios && usuarios.length > 0) { %>
+        <% usuarios.forEach(usuario => { %>
+          <tr>
+            <td><%= usuario.id %></td>
+            <td><%= usuario.nome %></td>
+            <td><%= usuario.idade %></td>
+            <td><%= usuario.email %></td>
+            <td>
+              <a href="/users/<%= usuario.id %>/edit">Editar</a>
+              |
+              <form action="/users/<%= usuario.id %>?_method=DELETE" method="POST" style="display:inline;">
+                <button type="submit" onclick="return confirm('Deseja excluir este usuário?');">
+                  Excluir
+                </button>
+              </form>
+            </td>
+          </tr>
+        <% }); %>
+      <% } else { %>
+        <tr>
+          <td colspan="5">Nenhum usuário encontrado.</td>
+        </tr>
+      <% } %>
+    </tbody>
+  </table>
+</body>
+</html>
