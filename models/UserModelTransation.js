@@ -1,112 +1,101 @@
-const db = require('../config/db');
+const { getConnection } = require('../config/db');
+const oracledb = require('oracledb');
 
 module.exports = {
-  findAll() {
-    return new Promise((resolve, reject) => {
-      db.all('SELECT * FROM usuarios', (err, rows) => {
-        if (err) return reject(err);
-        resolve(rows);
-      });
-    });
+  async findAll() {
+    let connection;
+    try {
+      connection = await getConnection();
+      const result = await connection.execute('SELECT * FROM usuarios');
+      return result.rows;
+    } catch (err) {
+      throw err;
+    } finally {
+      if (connection) await connection.close();
+    }
   },
 
-  findById(id) {
-    return new Promise((resolve, reject) => {
-      db.get('SELECT * FROM usuarios WHERE id = ?', [id], (err, row) => {
-        if (err) return reject(err);
-        resolve(row);
-      });
-    });
+  async findById(id) {
+    let connection;
+    try {
+      connection = await getConnection();
+      const result = await connection.execute('SELECT * FROM usuarios WHERE id = :id', [id]);
+      return result.rows[0] || null;
+    } catch (err) {
+      throw err;
+    } finally {
+      if (connection) await connection.close();
+    }
   },
 
-  create({ nome, idade, email }) {
-    return new Promise((resolve, reject) => {
-      db.serialize(() => {
-        db.run('BEGIN TRANSACTION', (err) => {
-          if (err) return reject(err);
+  async create({ nome, idade, email }) {
+    let connection;
+    try {
+      connection = await getConnection();
+      await connection.execute('BEGIN');
+      
+      const sql = `
+        INSERT INTO usuarios (nome, idade, email) 
+        VALUES (:nome, :idade, :email) 
+        RETURNING id INTO :id
+      `;
+      
+      const result = await connection.execute(
+        sql,
+        { 
+          nome, idade, email, 
+          id: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
+        },
+        { autoCommit: false }
+      );
 
-          const sql = 'INSERT INTO usuarios (nome, idade, email) VALUES (?, ?, ?)';
-          db.run(sql, [nome, idade, email], function (err) {
-            if (err) {
-              return db.run('ROLLBACK', (rollbackErr) => {
-                if (rollbackErr) return reject(rollbackErr);
-                return reject(err);
-              });
-            }
-
-            const insertedId = this.lastID;
-
-            db.run('COMMIT', (commitErr) => {
-              if (commitErr) {
-                return db.run('ROLLBACK', (rollbackErr) => {
-                  if (rollbackErr) return reject(rollbackErr);
-                  return reject(commitErr);
-                });
-              }
-              resolve({ id: insertedId, nome, idade, email });
-            });
-          });
-        });
-      });
-    });
+      await connection.execute('COMMIT');
+      return { id: result.outBinds.id[0], nome, idade, email };
+    } catch (err) {
+      if (connection) await connection.execute('ROLLBACK');
+      throw err;
+    } finally {
+      if (connection) await connection.close();
+    }
   },
 
-  update(id, { nome, idade, email }) {
-    return new Promise((resolve, reject) => {
-      db.serialize(() => {
-        db.run('BEGIN TRANSACTION', (err) => {
-          if (err) return reject(err);
+  async update(id, { nome, idade, email }) {
+    let connection;
+    try {
+      connection = await getConnection();
+      await connection.execute('BEGIN');
 
-          const sql = 'UPDATE usuarios SET nome = ?, idade = ?, email = ? WHERE id = ?';
-          db.run(sql, [nome, idade, email, id], function (err) {
-            if (err) {
-              return db.run('ROLLBACK', (rollbackErr) => {
-                if (rollbackErr) return reject(rollbackErr);
-                return reject(err);
-              });
-            }
+      const sql = `
+        UPDATE usuarios 
+        SET nome = :nome, idade = :idade, email = :email 
+        WHERE id = :id
+      `;
 
-            db.run('COMMIT', (commitErr) => {
-              if (commitErr) {
-                return db.run('ROLLBACK', (rollbackErr) => {
-                  if (rollbackErr) return reject(rollbackErr);
-                  return reject(commitErr);
-                });
-              }
-              resolve({ id, nome, idade, email });
-            });
-          });
-        });
-      });
-    });
+      await connection.execute(sql, { nome, idade, email, id }, { autoCommit: false });
+      await connection.execute('COMMIT');
+
+      return { id, nome, idade, email };
+    } catch (err) {
+      if (connection) await connection.execute('ROLLBACK');
+      throw err;
+    } finally {
+      if (connection) await connection.close();
+    }
   },
 
-  delete(id) {
-    return new Promise((resolve, reject) => {
-      db.serialize(() => {
-        db.run('BEGIN TRANSACTION', (err) => {
-          if (err) return reject(err);
+  async delete(id) {
+    let connection;
+    try {
+      connection = await getConnection();
+      await connection.execute('BEGIN');
 
-          db.run('DELETE FROM usuarios WHERE id = ?', [id], function (err) {
-            if (err) {
-              return db.run('ROLLBACK', (rollbackErr) => {
-                if (rollbackErr) return reject(rollbackErr);
-                return reject(err);
-              });
-            }
-
-            db.run('COMMIT', (commitErr) => {
-              if (commitErr) {
-                return db.run('ROLLBACK', (rollbackErr) => {
-                  if (rollbackErr) return reject(rollbackErr);
-                  return reject(commitErr);
-                });
-              }
-              resolve();
-            });
-          });
-        });
-      });
-    });
-  },
+      await connection.execute('DELETE FROM usuarios WHERE id = :id', [id], { autoCommit: false });
+      await connection.execute('COMMIT');
+    } catch (err) {
+      if (connection) await connection.execute('ROLLBACK');
+      throw err;
+    } finally {
+      if (connection) await connection.close();
+    }
+  }
 };
