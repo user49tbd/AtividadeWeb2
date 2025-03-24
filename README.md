@@ -1,7 +1,7 @@
 # Pesquisa e implementação
-Procurar o drive de conexão com node X oracle
-métodos de querys entre o node e oracle
-refatorar a model “userModel_oracle”
-e incluir no .env as configurações do oracle
+:black_circle: Procurar o drive de conexão com node X oracle
+:black_circle: métodos de querys entre o node e oracle
+:black_circle: refatorar a model “userModel_oracle”
+:black_circle: e incluir no .env as configurações do oracle
 
-criar no projeto uma nova model para salvar e buscar os dados no oracle
+:black_circle: criar no projeto uma nova model para salvar e buscar os dados no oracle
